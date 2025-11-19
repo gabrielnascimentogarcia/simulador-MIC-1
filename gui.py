@@ -6,16 +6,15 @@ class Button:
         self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.action_name = action_name
-        self.action_name = action_name
-        self.color = THEME_BUTTON_BG
-        self.hover_color = THEME_BUTTON_HOVER
-        self.text_color = THEME_BUTTON_TEXT
-        self.font = pygame.font.SysFont("Consolas", 14, bold=True)
+        self.color = (70, 70, 70)
+        self.hover_color = (100, 100, 100)
+        self.text_color = COLOR_TEXT
+        self.font = pygame.font.SysFont("Arial", 14, bold=True)
 
     def draw(self, screen, mouse_pos):
         color = self.hover_color if self.rect.collidepoint(mouse_pos) else self.color
-        pygame.draw.rect(screen, color, self.rect, border_radius=4)
-        pygame.draw.rect(screen, THEME_PANEL_BORDER, self.rect, 1, border_radius=4)
+        pygame.draw.rect(screen, color, self.rect)
+        pygame.draw.rect(screen, COLOR_REGISTER_BORDER, self.rect, 2)
         
         text_surf = self.font.render(self.text, True, self.text_color)
         text_rect = text_surf.get_rect(center=self.rect.center)
@@ -191,58 +190,36 @@ class Editor:
                     self.cursor_col += 1
 
     def draw(self, screen, current_pc=None):
-        # Background
-        pygame.draw.rect(screen, THEME_EDITOR_BG, self.rect)
-        pygame.draw.rect(screen, THEME_PANEL_BORDER, self.rect, 1)
+        pygame.draw.rect(screen, (40, 40, 40), self.rect)
+        pygame.draw.rect(screen, COLOR_REGISTER_BORDER, self.rect, 2)
         
-        font_title = pygame.font.SysFont("Consolas", 16, bold=True)
-        title = font_title.render("Editor (Assembly)", True, THEME_TEXT_MAIN)
+        font_title = pygame.font.SysFont("Arial", 16, bold=True)
+        title = font_title.render("Editor de Código (Assembly)", True, COLOR_TEXT)
         screen.blit(title, (self.rect.x, self.rect.y - 25))
-
-        gutter_width = 40
 
         for i, line in enumerate(self.lines):
             y = self.rect.y + 10 + i * self.line_height - self.scroll_y
             if y < self.rect.y: continue
             if y > self.rect.bottom - 20: break 
             
-            # 1. Highlight PC (Current Instruction) - Full Width
             if current_pc is not None and i == current_pc:
-                pygame.draw.rect(screen, THEME_HIGHLIGHT_PC, (self.rect.x + 1, y, self.rect.width - 2, self.line_height))
+                pygame.draw.rect(screen, (60, 60, 0), (self.rect.x + 2, y, self.rect.width - 4, self.line_height))
             
-            # 2. Selection/Active Line Highlight (Optional, subtle)
+            if getattr(self, 'select_all_active', False):
+                 pygame.draw.rect(screen, (0, 0, 100), (self.rect.x + 2, y, self.rect.width - 4, self.line_height))
+
+            text_surf = self.font.render(f"{i:02}: {line}", True, COLOR_TEXT)
+            screen.blit(text_surf, (self.rect.x + 10, y))
+
             if self.active and i == self.cursor_line:
-                # Maybe just a very subtle background or nothing if PC is there
-                pass
-
-            # 3. Gutter (Line Numbers)
-            pygame.draw.rect(screen, THEME_EDITOR_GUTTER, (self.rect.x, y, gutter_width, self.line_height))
-            line_num_color = THEME_TEXT_DIM
-            if current_pc is not None and i == current_pc:
-                line_num_color = THEME_ACCENT # Highlight line number too
-            
-            line_num_surf = self.font.render(f"{i:02}", True, line_num_color)
-            screen.blit(line_num_surf, (self.rect.x + 5, y))
-            
-            # Gutter Separator
-            pygame.draw.line(screen, THEME_PANEL_BORDER, (self.rect.x + gutter_width, y), (self.rect.x + gutter_width, y + self.line_height))
-
-            # 4. Code Text
-            text_color = THEME_TEXT_MAIN
-            if line.strip().startswith(';'):
-                text_color = THEME_TEXT_DIM
-            
-            text_surf = self.font.render(line, True, text_color)
-            screen.blit(text_surf, (self.rect.x + gutter_width + 8, y))
-
-            # 5. Cursor (Last)
-            if self.active and i == self.cursor_line:
+                prefix = f"{i:02}: "
+                prefix_width, _ = self.font.size(prefix)
                 content_before_cursor = line[:self.cursor_col]
                 content_width, _ = self.font.size(content_before_cursor)
-                cursor_x = self.rect.x + gutter_width + 8 + content_width
+                cursor_x = self.rect.x + 10 + prefix_width + content_width
                 
                 if (pygame.time.get_ticks() // 500) % 2 == 0:
-                    pygame.draw.line(screen, THEME_CURSOR, (cursor_x, y), (cursor_x, y + self.line_height), 2)
+                    pygame.draw.line(screen, COLOR_ACCENT, (cursor_x, y), (cursor_x, y + self.line_height), 2)
 
     def get_text(self):
         return self.lines
@@ -266,18 +243,18 @@ class HistoryLog:
             self.logs = self.logs[-self.max_logs:]
 
     def draw(self, screen):
-        pygame.draw.rect(screen, THEME_PANEL_BG, self.rect)
-        pygame.draw.rect(screen, THEME_PANEL_BORDER, self.rect, 1)
+        pygame.draw.rect(screen, (20, 20, 20), self.rect)
+        pygame.draw.rect(screen, COLOR_REGISTER_BORDER, self.rect, 2)
         
-        title_font = pygame.font.SysFont("Consolas", 14, bold=True)
-        title = title_font.render("Histórico", True, THEME_TEXT_DIM)
+        title_font = pygame.font.SysFont("Arial", 14, bold=True)
+        title = title_font.render("Histórico de Execução", True, (200, 200, 200))
         screen.blit(title, (self.rect.x + 5, self.rect.y - 20))
 
         y = self.rect.y + 5
         for i, log in enumerate(self.logs):
             # Fade out older logs
             alpha = 255 if i == len(self.logs) - 1 else 150
-            color = THEME_TEXT_ACCENT if i == len(self.logs) - 1 else THEME_TEXT_DIM
+            color = (200, 255, 200) if i == len(self.logs) - 1 else (150, 150, 150)
             
             log_surf = self.font.render(f"> {log}", True, color)
             # Clip text if too long
@@ -296,12 +273,6 @@ class MemoryView:
         self.scroll_y = 0
         self.total_lines = 4096 # Total memory size
 
-    def scroll_to_address(self, addr):
-        # Center the address in the view if possible
-        lines_visible = (self.rect.height - 50) // 18
-        target_scroll = addr - lines_visible // 2
-        self.scroll_y = max(0, min(target_scroll, self.total_lines - lines_visible))
-
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
             if self.rect.collidepoint(pygame.mouse.get_pos()):
@@ -311,17 +282,17 @@ class MemoryView:
                 self.scroll_y = max(0, min(self.scroll_y, max_scroll))
 
     def draw(self, screen, memory, last_access_addr=None):
-        pygame.draw.rect(screen, THEME_PANEL_BG, self.rect)
-        pygame.draw.rect(screen, THEME_PANEL_BORDER, self.rect, 1)
+        pygame.draw.rect(screen, (30, 30, 35), self.rect)
+        pygame.draw.rect(screen, COLOR_REGISTER_BORDER, self.rect, 2)
         
         # Title
-        title = self.title_font.render("Memória (RAM)", True, THEME_TEXT_MAIN)
+        title = self.title_font.render("Memória (RAM)", True, COLOR_TEXT)
         screen.blit(title, (self.rect.x + 5, self.rect.y + 5))
         
         # Header
-        header = self.font.render("Addr | Value", True, THEME_TEXT_DIM)
+        header = self.font.render("Endereço | Valor", True, (150, 150, 150))
         screen.blit(header, (self.rect.x + 5, self.rect.y + 25))
-        pygame.draw.line(screen, THEME_PANEL_BORDER, (self.rect.x + 5, self.rect.y + 42), (self.rect.right - 5, self.rect.y + 42))
+        pygame.draw.line(screen, (100, 100, 100), (self.rect.x + 5, self.rect.y + 42), (self.rect.right - 5, self.rect.y + 42))
         
         # Content
         y_start = self.rect.y + 45
@@ -335,33 +306,16 @@ class MemoryView:
         for addr in range(start_idx, end_idx):
             if y + line_h > self.rect.bottom - 5: break
             
-            # 1. Zebra Striping (Background)
-            if addr % 2 == 0:
-                pygame.draw.rect(screen, (35, 35, 40), (self.rect.x + 1, y, self.rect.width - 2, line_h))
-            
-            # 2. Highlight Access (Background)
-            if last_access_addr == addr:
-                pygame.draw.rect(screen, THEME_HIGHLIGHT_MEM, (self.rect.x + 1, y, self.rect.width - 2, line_h))
-
-            # 3. Text (Aligned Columns)
             val = memory.data[addr]
+            color = COLOR_TEXT
             
-            # Address Column
-            addr_str = f"{addr:04} ({addr:03X})"
-            addr_surf = self.font.render(addr_str, True, THEME_TEXT_DIM)
-            screen.blit(addr_surf, (self.rect.x + 5, y))
-            
-            # Separator (Visual)
-            # screen.blit(self.font.render("|", True, THEME_TEXT_DIM), (self.rect.x + 100, y))
+            if last_access_addr == addr:
+                pygame.draw.rect(screen, (50, 50, 0), (self.rect.x + 2, y, self.rect.width - 4, line_h))
+                color = (255, 255, 0)
 
-            # Value Column
-            val_str = f"{val:05} (0x{val:04X})"
-            val_color = THEME_TEXT_MAIN
-            if val != 0: val_color = THEME_ACCENT # Highlight non-zero values
-            
-            val_surf = self.font.render(val_str, True, val_color)
-            screen.blit(val_surf, (self.rect.x + 110, y))
-            
+            text = f"{addr:04} ({addr:03X}) | {val:05} (0x{val:04X})"
+            surf = self.font.render(text, True, color)
+            screen.blit(surf, (self.rect.x + 5, y))
             y += line_h
 
 class GUI:
@@ -372,7 +326,7 @@ class GUI:
         pygame.scrap.init()
         self.font = pygame.font.SysFont("Consolas", 16)
         self.value_font = pygame.font.SysFont("Consolas", 14)
-        self.title_font = pygame.font.SysFont("Consolas", 20, bold=True)
+        self.title_font = pygame.font.SysFont("Arial", 20, bold=True)
         self.clock = pygame.time.Clock()
         
         btn_y = SCREEN_HEIGHT - 60
@@ -388,14 +342,13 @@ class GUI:
         self.history_log = HistoryLog(50, 550, 700, 180) 
         
         self.status_message = "Pronto. Digite o código e clique em CARREGAR."
-        self.status_color = THEME_TEXT_MAIN
+        self.status_color = COLOR_TEXT
         
         # Memory View
         self.memory_view = MemoryView(550, 120, 200, 250)
         
-        # Glow Logic
+        # Glow Logic Removed
         self.prev_reg_values = {}
-        self.glow_timers = {}
 
     def get_explanation(self, mpc):
         explanations = {
@@ -429,29 +382,22 @@ class GUI:
         }
         return explanations.get(mpc, f"Executando microinstrução no endereço {mpc}...")
 
-    def draw_rect_with_text(self, x, y, w, h, text, value=None, active=False, highlight=False, glow=False):
-        if glow:
-            color = THEME_REGISTER_GLOW # Glow color
-            border_color = THEME_ACCENT
-        else:
-            color = THEME_REGISTER_ACTIVE if active else (THEME_REGISTER_BG)
-            border_color = THEME_ACCENT if active else THEME_REGISTER_BORDER
+    def draw_rect_with_text(self, x, y, w, h, text, value=None, active=False, highlight=False):
+        color = COLOR_ACCENT if active else (COLOR_HIGHLIGHT if highlight else COLOR_REGISTER)
+        border_color = COLOR_REGISTER_BORDER
         
-        pygame.draw.rect(self.screen, color, (x, y, w, h), border_radius=4)
-        pygame.draw.rect(self.screen, border_color, (x, y, w, h), 2, border_radius=4)
+        pygame.draw.rect(self.screen, color, (x, y, w, h))
+        pygame.draw.rect(self.screen, border_color, (x, y, w, h), 2)
         
         # Center text
-        label_surf = self.font.render(text, True, THEME_TEXT_DIM)
+        label_surf = self.font.render(text, True, COLOR_TEXT)
         label_rect = label_surf.get_rect(midtop=(x + w//2, y + 5))
         self.screen.blit(label_surf, label_rect)
         
         if value is not None:
             signed_val = value if value < 0x8000 else value - 0x10000
             val_str = f"{signed_val} (0x{value:04X})"
-            val_color = THEME_TEXT_MAIN
-            if active or glow: val_color = THEME_TEXT_MAIN # Keep white/bright
-            
-            val_surf = self.value_font.render(val_str, True, val_color)
+            val_surf = self.value_font.render(val_str, True, COLOR_TEXT)
             # Center and clamp
             val_rect = val_surf.get_rect(midbottom=(x + w//2, y + h - 2))
             if val_rect.width > w - 4:
@@ -465,7 +411,7 @@ class GUI:
             self.screen.blit(val_surf, val_rect)
 
     def draw_cpu(self, cpu):
-        self.screen.fill(THEME_BG)
+        self.screen.fill(COLOR_BACKGROUND)
         mouse_pos = pygame.mouse.get_pos()
         
         if hasattr(cpu, 'last_action_desc'):
@@ -476,16 +422,8 @@ class GUI:
         regs_left = [('MAR', cpu.mar), ('MBR', cpu.mbr), ('PC', cpu.pc), ('SP', cpu.sp), ('AC', cpu.ac)]
         for name, reg in regs_left:
             val = reg.read()
-            # Check change
-            if self.prev_reg_values.get(name) != val:
-                self.glow_timers[name] = 20 # frames
-                self.prev_reg_values[name] = val
-            
-            is_glowing = self.glow_timers.get(name, 0) > 0
-            if is_glowing: self.glow_timers[name] -= 1
-            
             is_active = name in cpu.signals['active_path']
-            self.draw_rect_with_text(x_left, y, REG_WIDTH, REG_HEIGHT, name, val, active=is_active, glow=is_glowing)
+            self.draw_rect_with_text(x_left, y, REG_WIDTH, REG_HEIGHT, name, val, active=is_active)
             y += REG_HEIGHT + GAP_Y
 
         x_right = 300
@@ -493,16 +431,8 @@ class GUI:
         regs_right = [('IR', cpu.ir), ('TIR', cpu.tir)]
         for name, reg in regs_right:
             val = reg.read()
-            # Check change
-            if self.prev_reg_values.get(name) != val:
-                self.glow_timers[name] = 20
-                self.prev_reg_values[name] = val
-                
-            is_glowing = self.glow_timers.get(name, 0) > 0
-            if is_glowing: self.glow_timers[name] -= 1
-
             is_active = name in cpu.signals['active_path']
-            self.draw_rect_with_text(x_right, y, REG_WIDTH, REG_HEIGHT, name, val, active=is_active, glow=is_glowing)
+            self.draw_rect_with_text(x_right, y, REG_WIDTH, REG_HEIGHT, name, val, active=is_active)
             y += REG_HEIGHT + GAP_Y
             
         alu_active = 'ALU' in cpu.signals['active_path']
@@ -510,44 +440,35 @@ class GUI:
         
         x_mem = 550
         y_mem = 50
-        x_mem = 550
-        y_mem = 50
         cache_status = cpu.cache.last_access_type
-        color_cache = THEME_CACHE_HIT if cache_status == "HIT" else (THEME_CACHE_MISS if cache_status == "MISS" else THEME_CACHE_NONE)
-        pygame.draw.rect(self.screen, color_cache, (x_mem, y_mem, 150, 50), border_radius=4)
-        pygame.draw.rect(self.screen, THEME_PANEL_BORDER, (x_mem, y_mem, 150, 50), 2, border_radius=4)
+        color_cache = COLOR_CACHE_HIT if cache_status == "HIT" else (COLOR_CACHE_MISS if cache_status == "MISS" else COLOR_INACTIVE)
+        pygame.draw.rect(self.screen, color_cache, (x_mem, y_mem, 150, 50))
+        pygame.draw.rect(self.screen, COLOR_REGISTER_BORDER, (x_mem, y_mem, 150, 50), 2)
         status_text = f"CACHE: {cache_status}"
-        text_surf = self.font.render(status_text, True, THEME_TEXT_MAIN)
+        text_surf = self.font.render(status_text, True, COLOR_TEXT)
         self.screen.blit(text_surf, (x_mem + 10, y_mem + 15))
         
         # Draw Memory View
-        last_access = None
-        if cpu.signals['read_mem'] or cpu.signals['write_mem']:
-            last_access = cpu.mar.read()
-            # Smart Auto-Scroll
-            self.memory_view.scroll_to_address(last_access)
-            
+        last_access = cpu.mar.read() if cpu.signals['read_mem'] or cpu.signals['write_mem'] else None
         self.memory_view.draw(self.screen, cpu.memory, last_access_addr=last_access)
         
         y_sig = 400
         x_sig = 50
-        y_sig = 400
-        x_sig = 50
         signals_str = f"Leitura: {cpu.signals['read_mem']} | Escrita: {cpu.signals['write_mem']} | ULA: {cpu.signals['alu_op']}"
-        sig_surf = self.font.render(signals_str, True, THEME_TEXT_DIM)
+        sig_surf = self.font.render(signals_str, True, COLOR_TEXT)
         self.screen.blit(sig_surf, (x_sig, y_sig))
         
         mpc_str = f"MPC: {cpu.mpc}"
-        mpc_surf = self.title_font.render(mpc_str, True, THEME_ACCENT)
+        mpc_surf = self.title_font.render(mpc_str, True, COLOR_HIGHLIGHT)
         self.screen.blit(mpc_surf, (x_sig, y_sig + 30))
         
         # --- Explanation Panel ---
         exp_y = y_sig + 70 # 470
-        pygame.draw.rect(self.screen, THEME_PANEL_BG, (x_sig, exp_y, 700, 60), border_radius=4)
-        pygame.draw.rect(self.screen, THEME_PANEL_BORDER, (x_sig, exp_y, 700, 60), 2, border_radius=4)
+        pygame.draw.rect(self.screen, (50, 50, 60), (x_sig, exp_y, 700, 60))
+        pygame.draw.rect(self.screen, COLOR_REGISTER_BORDER, (x_sig, exp_y, 700, 60), 2)
         
         explanation = self.get_explanation(cpu.mpc)
-        exp_surf = self.font.render(explanation, True, THEME_TEXT_MAIN)
+        exp_surf = self.font.render(explanation, True, (255, 255, 200))
         self.screen.blit(exp_surf, (x_sig + 10, exp_y + 20))
         
         # --- History Log ---
@@ -567,7 +488,7 @@ class GUI:
 
         # Status Bar (Bottom)
         status_y = 770
-        status_color = COLOR_ERROR if "Erro" in self.status_message else self.status_color
+        status_color = (255, 50, 50) if "Erro" in self.status_message else self.status_color
         status_surf = self.font.render(f"Status: {self.status_message}", True, status_color)
         self.screen.blit(status_surf, (x_sig, status_y))
         

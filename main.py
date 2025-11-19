@@ -5,7 +5,7 @@ from cpu import CPU
 from hardware import Memory, Cache
 from gui import GUI
 from assembler import assemble
-from config import THEME_CACHE_HIT, THEME_CACHE_MISS, THEME_TEXT_MAIN
+from config import COLOR_CACHE_HIT, COLOR_CACHE_MISS, COLOR_TEXT
 
 def main():
     # 1. Initialize Components
@@ -32,10 +32,12 @@ def main():
             auto_run = not auto_run
         elif action == "RESET":
             # Reset CPU state
-            cpu.reset()
+            cpu = CPU()
+            # Reload current memory from last successful assembly? No, clear it.
+            # cpu.memory is already new from CPU() init
             auto_run = False
             gui.status_message = "Reiniciado. Clique em CARREGAR."
-            gui.status_color = THEME_TEXT_MAIN
+            gui.status_color = COLOR_TEXT
             # Force GUI to see new CPU immediately
             gui.draw_cpu(cpu)
 
@@ -50,11 +52,11 @@ def main():
                     cpu.memory.write(i, code)
                 
                 gui.status_message = "Codigo Carregado com Sucesso!"
-                gui.status_color = THEME_CACHE_HIT # Green
+                gui.status_color = COLOR_CACHE_HIT # Green
                 auto_run = False
             except Exception as e:
                 gui.status_message = f"Erro: {str(e)}"
-                gui.status_color = THEME_CACHE_MISS # Red
+                gui.status_color = COLOR_CACHE_MISS # Red
             
         if auto_run:
             cpu.cycle()

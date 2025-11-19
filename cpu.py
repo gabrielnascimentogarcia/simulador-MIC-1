@@ -38,25 +38,6 @@ class CPU:
             'active_path': []
         }
 
-    def reset(self):
-        # Reset Registers
-        self.pc.write(0)
-        self.ac.write(0)
-        self.sp.write(0)
-        self.ir.write(0)
-        self.tir.write(0)
-        self.mar.write(0)
-        self.mbr.write(0)
-        
-        # Reset Hardware
-        self.memory.reset()
-        self.cache.reset()
-        
-        # Reset Control
-        self.mpc = 0
-        self.reset_signals()
-        self.last_action_desc = "CPU Reiniciada"
-
     def decode_instruction(self, ir_value):
         """
         Maps the opcode (high 4 bits of IR) to the starting MPC address
@@ -184,6 +165,8 @@ class CPU:
             case 26:
                 val = self.cache.read(self.mar.read())
                 self.mbr.write(val)
+                self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR']
                 self.last_action_desc = f"SUBD: MBR <- Mem[{self.mar.read()}] ({val})"
                 self.mpc = 27
             case 27:
@@ -191,24 +174,29 @@ class CPU:
                 res = self.alu.sub(old_ac, self.mbr.read())
                 self.ac.write(res)
                 self.signals['alu_op'] = 'SUB'
+                self.signals['active_path'] = ['AC', 'MBR', 'ALU', 'AC']
                 self.last_action_desc = f"SUBD: AC <- {old_ac} - {self.mbr.read()} = {res}"
                 self.mpc = 0
 
             # --- JPOS (Jump if Positive) ---
             case 30:
                 jumped = False
+                self.signals['active_path'] = ['AC']
                 if (self.ac.read() & 0x8000) == 0:
                      self.pc.write(self.ir.read() & 0xFFF)
                      jumped = True
+                     self.signals['active_path'] = ['AC', 'IR', 'PC']
                 self.last_action_desc = f"JPOS: {'Pulou' if jumped else 'Não pulou'} (AC={self.ac.read()})"
                 self.mpc = 0
 
             # --- JZER (Jump if Zero) ---
             case 35:
                 jumped = False
+                self.signals['active_path'] = ['AC']
                 if self.ac.read() == 0:
                     self.pc.write(self.ir.read() & 0xFFF)
                     jumped = True
+                    self.signals['active_path'] = ['AC', 'IR', 'PC']
                 self.last_action_desc = f"JZER: {'Pulou' if jumped else 'Não pulou'} (AC={self.ac.read()})"
                 self.mpc = 0
 
@@ -216,6 +204,7 @@ class CPU:
             case 40:
                 addr = self.ir.read() & 0xFFF
                 self.pc.write(addr)
+                self.signals['active_path'] = ['IR', 'PC']
                 self.last_action_desc = f"JUMP: PC <- {addr}"
                 self.mpc = 0
 
@@ -223,6 +212,7 @@ class CPU:
             case 45:
                 val = self.ir.read() & 0xFFF
                 self.ac.write(val)
+                self.signals['active_path'] = ['IR', 'AC']
                 self.last_action_desc = f"LOCO: AC <- Constante {val}"
                 self.mpc = 0
             
@@ -256,28 +246,34 @@ class CPU:
                 low_bits = self.ir.read() & 0xFFF
                 if low_bits == 0x001: 
                     self.sp.write(self.sp.read() - 1)
+                    self.signals['active_path'] = ['SP']
                     self.last_action_desc = "PUSH: Decrementa SP"
                     self.mpc = 91
                 elif low_bits == 0x002:
                     self.mar.write(self.sp.read())
+                    self.signals['active_path'] = ['SP', 'MAR']
                     self.last_action_desc = "POP: MAR <- SP"
                     self.mpc = 94
                 elif low_bits == 0x003:
                     self.mar.write(self.sp.read())
+                    self.signals['active_path'] = ['SP', 'MAR']
                     self.last_action_desc = "RETN: MAR <- SP"
                     self.mpc = 97
                 elif low_bits == 0x004:
                     tmp = self.ac.read()
                     self.ac.write(self.sp.read())
                     self.sp.write(tmp)
+                    self.signals['active_path'] = ['AC', 'SP']
                     self.last_action_desc = "SWAP: Troca AC e SP"
                     self.mpc = 0
                 elif low_bits == 0x005:
                     self.sp.write(self.sp.read() + 1)
+                    self.signals['active_path'] = ['SP']
                     self.last_action_desc = "INSP: Incrementa SP"
                     self.mpc = 0
                 elif low_bits == 0x006:
                     self.sp.write(self.sp.read() - 1)
+                    self.signals['active_path'] = ['SP']
                     self.last_action_desc = "DESP: Decrementa SP"
                     self.mpc = 0
                 else:
@@ -288,6 +284,7 @@ class CPU:
             case 91:
                 self.mar.write(self.sp.read())
                 self.mbr.write(self.ac.read())
+                self.signals['active_path'] = ['SP', 'MAR', 'AC', 'MBR']
                 self.last_action_desc = "PUSH: MAR <- SP, MBR <- AC"
                 self.mpc = 92
             case 92:
@@ -301,11 +298,13 @@ class CPU:
                 val = self.cache.read(self.mar.read())
                 self.mbr.write(val)
                 self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR']
                 self.last_action_desc = f"POP: MBR <- Mem[{self.mar.read()}] ({val})"
                 self.mpc = 95
             case 95:
                 self.ac.write(self.mbr.read())
                 self.sp.write(self.sp.read() + 1)
+                self.signals['active_path'] = ['MBR', 'AC', 'SP']
                 self.last_action_desc = f"POP: AC <- MBR, Incrementa SP"
                 self.mpc = 0
 
@@ -314,11 +313,13 @@ class CPU:
                 val = self.cache.read(self.mar.read())
                 self.mbr.write(val)
                 self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR']
                 self.last_action_desc = f"RETN: MBR <- Mem[{self.mar.read()}] ({val})"
                 self.mpc = 98
             case 98:
                 self.pc.write(self.mbr.read())
                 self.sp.write(self.sp.read() + 1)
+                self.signals['active_path'] = ['MBR', 'PC', 'SP']
                 self.last_action_desc = f"RETN: PC <- MBR ({self.mbr.read()}), Incrementa SP"
                 self.mpc = 0
 

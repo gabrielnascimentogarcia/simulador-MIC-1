@@ -25,9 +25,6 @@ class Memory:
         self.size = size
         self.data = [0] * size
 
-    def reset(self):
-        self.data = [0] * self.size
-
     def read(self, addr):
         if 0 <= addr < self.size:
             return self.data[addr]
@@ -44,10 +41,6 @@ class Cache:
         # Cache lines: list of dicts {valid, tag, data}
         self.lines = [{'valid': False, 'tag': 0, 'data': 0} for _ in range(size)]
         self.last_access_type = "NONE" # "HIT" or "MISS"
-
-    def reset(self):
-        self.lines = [{'valid': False, 'tag': 0, 'data': 0} for _ in range(self.size)]
-        self.last_access_type = "NONE"
 
     def _get_index_tag(self, addr):
         # Direct Mapping:
@@ -74,23 +67,22 @@ class Cache:
             return data
 
     def write(self, addr, val):
-        # Write-Allocate + Write-Through Policy:
-        # 1. Always write to memory (Write-Through)
-        self.memory.write(addr, val)
-        
-        # 2. Update Cache (Write-Allocate)
-        # Whether it was a Hit or Miss, we bring/update the block in cache
-        # so next read is a Hit.
+        # Write-Allocate Policy:
+        # 1. Check if address is in cache (Hit/Miss)
         index, tag = self._get_index_tag(addr)
         
-        # Check if it was a hit just for stats (optional, but good for visualization)
         if self.lines[index]['valid'] and self.lines[index]['tag'] == tag:
-             self.last_access_type = "HIT"
+            # HIT: Update cache and memory (Write-Through)
+            self.lines[index]['data'] = val
+            self.memory.write(addr, val)
+            self.last_access_type = "HIT"
         else:
-             self.last_access_type = "MISS"
-             
-        # Update the line
-        self.lines[index] = {'valid': True, 'tag': tag, 'data': val}
+            # MISS: Write-Allocate
+            # 1. Write to memory first (Write-Through)
+            self.memory.write(addr, val)
+            # 2. Bring block to cache (Allocate)
+            self.lines[index] = {'valid': True, 'tag': tag, 'data': val}
+            self.last_access_type = "MISS"
 
 class ALU:
     def __init__(self):
