@@ -307,11 +307,17 @@ class MemoryView:
             if y + line_h > self.rect.bottom - 5: break
             
             val = memory.data[addr]
-            color = COLOR_TEXT
             
+            # Background for zebra striping
+            if addr % 2 == 0:
+                pygame.draw.rect(screen, (35, 35, 40), (self.rect.x + 2, y, self.rect.width - 4, line_h))
+
+            # Highlight last access
             if last_access_addr == addr:
-                pygame.draw.rect(screen, (50, 50, 0), (self.rect.x + 2, y, self.rect.width - 4, line_h))
-                color = (255, 255, 0)
+                pygame.draw.rect(screen, THEME_HIGHLIGHT_MEM, (self.rect.x + 2, y, self.rect.width - 4, line_h))
+                color = (255, 255, 255) # White text on highlight
+            else:
+                color = COLOR_TEXT
 
             text = f"{addr:04} ({addr:03X}) | {val:05} (0x{val:04X})"
             surf = self.font.render(text, True, color)

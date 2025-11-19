@@ -1,6 +1,7 @@
 # config.py
 
 # MAC-1 Instruction Set Architecture Opcodes
+# Corrected to match standard MAC-1 (Base 0)
 OPCODES = {
     'LODD': 0x0, 'STOD': 0x1, 'ADDD': 0x2, 'SUBD': 0x3,
     'JPOS': 0x4, 'JZER': 0x5, 'JUMP': 0x6, 'LOCO': 0x7,
@@ -18,6 +19,7 @@ COLOR_TEXT = (255, 255, 255)         # White
 COLOR_ACCENT = (0, 255, 0)           # Green (Active)
 COLOR_INACTIVE = (100, 100, 100)     # Gray (Inactive lines)
 COLOR_HIGHLIGHT = (255, 215, 0)      # Gold (Special highlight)
+THEME_HIGHLIGHT_MEM = (60, 70, 100)  # Blue-ish Gray (Memory Highlight)
 COLOR_CACHE_HIT = (0, 200, 0)        # Green
 COLOR_CACHE_MISS = (200, 0, 0)       # Red
 

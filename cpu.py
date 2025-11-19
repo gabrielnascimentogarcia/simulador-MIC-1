@@ -45,7 +45,7 @@ class CPU:
         """
         opcode = (ir_value >> 12) & 0xF
         
-        # Mapping based on Tanenbaum's MIC-1 (simplified)
+        # Mapping based on Tanenbaum's MIC-1 (Standard)
         mapping = {
             0x0: 10, # LODD
             0x1: 15, # STOD
@@ -376,14 +376,18 @@ class CPU:
                     self.last_action_desc = "SWAP: Troca AC e SP"
                     self.mpc = 0
                 elif low_bits == 0x005:
-                    self.sp.write(self.sp.read() + 1)
-                    self.signals['active_path'] = ['SP']
-                    self.last_action_desc = "INSP: Incrementa SP"
+                    # INSP: SP <- SP + offset
+                    offset = self.ir.read() & 0xFF
+                    self.sp.write(self.sp.read() + offset)
+                    self.signals['active_path'] = ['SP', 'IR', 'ALU', 'SP']
+                    self.last_action_desc = f"INSP: SP <- SP + {offset}"
                     self.mpc = 0
                 elif low_bits == 0x006:
-                    self.sp.write(self.sp.read() - 1)
-                    self.signals['active_path'] = ['SP']
-                    self.last_action_desc = "DESP: Decrementa SP"
+                    # DESP: SP <- SP - offset
+                    offset = self.ir.read() & 0xFF
+                    self.sp.write(self.sp.read() - offset)
+                    self.signals['active_path'] = ['SP', 'IR', 'ALU', 'SP']
+                    self.last_action_desc = f"DESP: SP <- SP - {offset}"
                     self.mpc = 0
                 else:
                     self.last_action_desc = "Instrução Desconhecida"
