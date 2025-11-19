@@ -33,13 +33,13 @@ def main():
         elif action == "RESET":
             # Reset CPU state
             cpu = CPU()
-            # Reload current memory from last successful assembly
-            # Or just clear it? Let's clear it and wait for Load
-            cpu.memory = Memory() # Clear memory
-            cpu.cache = Cache(cpu.memory)
+            # Reload current memory from last successful assembly? No, clear it.
+            # cpu.memory is already new from CPU() init
             auto_run = False
             gui.status_message = "Reiniciado. Clique em CARREGAR."
             gui.status_color = COLOR_TEXT
+            # Force GUI to see new CPU immediately
+            gui.draw_cpu(cpu)
 
         elif action == "LOAD":
             # Get code from editor

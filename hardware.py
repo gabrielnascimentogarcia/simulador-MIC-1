@@ -67,15 +67,22 @@ class Cache:
             return data
 
     def write(self, addr, val):
-        # Write-through policy (simplest for this simulation)
-        # Write to memory
-        self.memory.write(addr, val)
-        
-        # Update cache if present (or just invalidate, but updating is better)
+        # Write-Allocate Policy:
+        # 1. Check if address is in cache (Hit/Miss)
         index, tag = self._get_index_tag(addr)
-        if self.lines[index]['tag'] == tag:
-             self.lines[index]['data'] = val
-             self.lines[index]['valid'] = True
+        
+        if self.lines[index]['valid'] and self.lines[index]['tag'] == tag:
+            # HIT: Update cache and memory (Write-Through)
+            self.lines[index]['data'] = val
+            self.memory.write(addr, val)
+            self.last_access_type = "HIT"
+        else:
+            # MISS: Write-Allocate
+            # 1. Write to memory first (Write-Through)
+            self.memory.write(addr, val)
+            # 2. Bring block to cache (Allocate)
+            self.lines[index] = {'valid': True, 'tag': tag, 'data': val}
+            self.last_access_type = "MISS"
 
 class ALU:
     def __init__(self):

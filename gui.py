@@ -38,7 +38,11 @@ class Editor:
         self.scroll_y = 0
 
     def ensure_cursor_visible(self):
-        pass
+        cursor_y = 10 + self.cursor_line * self.line_height
+        if cursor_y < self.scroll_y:
+            self.scroll_y = cursor_y
+        elif cursor_y + self.line_height > self.scroll_y + self.rect.height - 20:
+            self.scroll_y = cursor_y + self.line_height - (self.rect.height - 20)
 
     def copy(self):
         if self.cursor_line < len(self.lines):
@@ -93,12 +97,21 @@ class Editor:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
                 self.active = True
-                rel_y = event.pos[1] - self.rect.y
-                self.cursor_line = max(0, min(len(self.lines) - 1, rel_y // self.line_height))
+                # Handle click with scroll
+                rel_y = event.pos[1] - self.rect.y + self.scroll_y - 10
+                self.cursor_line = max(0, min(len(self.lines) - 1, int(rel_y // self.line_height)))
                 self.cursor_col = len(self.lines[self.cursor_line])
+                self.ensure_cursor_visible()
             else:
                 self.active = False
         
+        elif event.type == pygame.MOUSEWHEEL:
+            if self.rect.collidepoint(pygame.mouse.get_pos()):
+                self.scroll_y -= event.y * self.line_height
+                # Clamp scroll
+                max_scroll = max(0, len(self.lines) * self.line_height - self.rect.height + 20)
+                self.scroll_y = max(0, min(self.scroll_y, max_scroll))
+
         if self.active and event.type == pygame.KEYDOWN:
             ctrl = event.mod & pygame.KMOD_CTRL
             
@@ -185,7 +198,8 @@ class Editor:
         screen.blit(title, (self.rect.x, self.rect.y - 25))
 
         for i, line in enumerate(self.lines):
-            y = self.rect.y + 10 + i * self.line_height
+            y = self.rect.y + 10 + i * self.line_height - self.scroll_y
+            if y < self.rect.y: continue
             if y > self.rect.bottom - 20: break 
             
             if current_pc is not None and i == current_pc:
@@ -256,8 +270,18 @@ class MemoryView:
         self.rect = pygame.Rect(x, y, w, h)
         self.font = pygame.font.SysFont("Consolas", 14)
         self.title_font = pygame.font.SysFont("Arial", 14, bold=True)
+        self.scroll_y = 0
+        self.total_lines = 4096 # Total memory size
 
-    def draw(self, screen, memory):
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEWHEEL:
+            if self.rect.collidepoint(pygame.mouse.get_pos()):
+                self.scroll_y -= event.y
+                # Clamp scroll
+                max_scroll = self.total_lines - 10 # Approx
+                self.scroll_y = max(0, min(self.scroll_y, max_scroll))
+
+    def draw(self, screen, memory, last_access_addr=None):
         pygame.draw.rect(screen, (30, 30, 35), self.rect)
         pygame.draw.rect(screen, COLOR_REGISTER_BORDER, self.rect, 2)
         
@@ -270,27 +294,29 @@ class MemoryView:
         screen.blit(header, (self.rect.x + 5, self.rect.y + 25))
         pygame.draw.line(screen, (100, 100, 100), (self.rect.x + 5, self.rect.y + 42), (self.rect.right - 5, self.rect.y + 42))
         
-        # Content (Show only non-zero or relevant)
-        # For simplicity, show first 10 non-zero found, or specific range if needed.
-        # Let's show non-zero values.
-        count = 0
-        y = self.rect.y + 45
+        # Content
+        y_start = self.rect.y + 45
         line_h = 18
+        lines_visible = (self.rect.height - 50) // line_h
         
-        for addr, val in enumerate(memory.data):
-            if val != 0:
-                if y + line_h > self.rect.bottom - 5:
-                    break
-                
-                text = f"{addr:04} ({addr:03X}) | {val:05} (0x{val:04X})"
-                surf = self.font.render(text, True, COLOR_TEXT)
-                screen.blit(surf, (self.rect.x + 5, y))
-                y += line_h
-                count += 1
+        start_idx = int(self.scroll_y)
+        end_idx = min(len(memory.data), start_idx + lines_visible + 1)
         
-        if count == 0:
-            surf = self.font.render("Vazia (Tudo 0)", True, (100, 100, 100))
+        y = y_start
+        for addr in range(start_idx, end_idx):
+            if y + line_h > self.rect.bottom - 5: break
+            
+            val = memory.data[addr]
+            color = COLOR_TEXT
+            
+            if last_access_addr == addr:
+                pygame.draw.rect(screen, (50, 50, 0), (self.rect.x + 2, y, self.rect.width - 4, line_h))
+                color = (255, 255, 0)
+
+            text = f"{addr:04} ({addr:03X}) | {val:05} (0x{val:04X})"
+            surf = self.font.render(text, True, color)
             screen.blit(surf, (self.rect.x + 5, y))
+            y += line_h
 
 class GUI:
     def __init__(self):
@@ -444,7 +470,8 @@ class GUI:
         self.screen.blit(text_surf, (x_mem + 10, y_mem + 15))
         
         # Draw Memory View
-        self.memory_view.draw(self.screen, cpu.memory)
+        last_access = cpu.mar.read() if cpu.signals['read_mem'] or cpu.signals['write_mem'] else None
+        self.memory_view.draw(self.screen, cpu.memory, last_access_addr=last_access)
         
         y_sig = 400
         x_sig = 50
@@ -482,7 +509,8 @@ class GUI:
 
         # Status Bar (Bottom)
         status_y = 770
-        status_surf = self.font.render(f"Status: {self.status_message}", True, self.status_color)
+        status_color = (255, 50, 50) if "Erro" in self.status_message else self.status_color
+        status_surf = self.font.render(f"Status: {self.status_message}", True, status_color)
         self.screen.blit(status_surf, (x_sig, status_y))
         
         # --- Editor ---
@@ -496,6 +524,7 @@ class GUI:
                 return "QUIT"
             
             self.editor.handle_event(event)
+            self.memory_view.handle_event(event)
             
             for btn in self.buttons:
                 if btn.is_clicked(event):
