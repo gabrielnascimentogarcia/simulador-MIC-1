@@ -401,7 +401,9 @@ class GUI:
         self.screen.blit(label_surf, label_rect)
         
         if value is not None:
-            signed_val = value if value < 0x8000 else value - 0x10000
+            # Use ALU helper for signed conversion
+            from hardware import ALU
+            signed_val = ALU.to_signed(value)
             val_str = f"{signed_val} (0x{value:04X})"
             val_surf = self.value_font.render(val_str, True, COLOR_TEXT)
             # Center and clamp

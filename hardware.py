@@ -129,3 +129,10 @@ class ALU:
         res = (a >> 1) & 0xFFFF
         self.update_flags(res)
         return res
+
+    @staticmethod
+    def to_signed(val):
+        """Converts unsigned 16-bit integer to signed 16-bit integer."""
+        if val > 32767:
+            return val - 65536
+        return val

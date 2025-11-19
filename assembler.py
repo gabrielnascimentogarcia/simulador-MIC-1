@@ -85,17 +85,19 @@ def assemble(lines):
         # Handle Special Opcodes (0xF)
         if opcode == 0xF:
             extended_opcodes = {
-                'PSHI': 0x00, # Placeholder if needed
-                'POPI': 0x00, 
-                'PUSH': 0x01,
-                'POP':  0x02,
-                'RETN': 0x03,
-                'SWAP': 0x04,
-                'INSP': 0x05,
-                'DESP': 0x06
+                'PSHI': 0x000,
+                'POPI': 0x200,
+                'PUSH': 0x400,
+                'POP':  0x600,
+                'RETN': 0x800,
+                'SWAP': 0xA00,
+                'INSP': 0xC00,
+                'DESP': 0xE00
             }
             if mnemonic in extended_opcodes:
-                operand_val = extended_opcodes[mnemonic]
+                # Combine extended opcode with existing operand (if any)
+                # e.g. INSP 5 -> 0xC00 | 0x005 = 0xC05
+                operand_val = operand_val | extended_opcodes[mnemonic]
         
         # Construct 16-bit instruction
         # Mask operand to 12 bits
