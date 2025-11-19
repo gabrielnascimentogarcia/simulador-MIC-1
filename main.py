@@ -32,9 +32,7 @@ def main():
             auto_run = not auto_run
         elif action == "RESET":
             # Reset CPU state
-            cpu = CPU()
-            # Reload current memory from last successful assembly? No, clear it.
-            # cpu.memory is already new from CPU() init
+            cpu.reset()
             auto_run = False
             gui.status_message = "Reiniciado. Clique em CARREGAR."
             gui.status_color = COLOR_TEXT

@@ -38,6 +38,25 @@ class CPU:
             'active_path': []
         }
 
+    def reset(self):
+        # Reset Registers
+        self.pc.write(0)
+        self.ac.write(0)
+        self.sp.write(0)
+        self.ir.write(0)
+        self.tir.write(0)
+        self.mar.write(0)
+        self.mbr.write(0)
+        
+        # Reset Hardware
+        self.memory.reset()
+        self.cache.reset()
+        
+        # Reset Control
+        self.mpc = 0
+        self.reset_signals()
+        self.last_action_desc = "CPU Reiniciada"
+
     def decode_instruction(self, ir_value):
         """
         Maps the opcode (high 4 bits of IR) to the starting MPC address

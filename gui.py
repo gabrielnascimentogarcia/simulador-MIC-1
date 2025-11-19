@@ -208,15 +208,20 @@ class Editor:
             if getattr(self, 'select_all_active', False):
                  pygame.draw.rect(screen, (0, 0, 100), (self.rect.x + 2, y, self.rect.width - 4, self.line_height))
 
-            text_surf = self.font.render(f"{i:02}: {line}", True, COLOR_TEXT)
-            screen.blit(text_surf, (self.rect.x + 10, y))
+            text_surf = self.font.render(line, True, COLOR_TEXT)
+            
+            # Gutter
+            gutter_width = 40
+            pygame.draw.rect(screen, (30, 30, 30), (self.rect.x, y, gutter_width, self.line_height))
+            line_num_surf = self.font.render(f"{i:02}", True, (100, 100, 100))
+            screen.blit(line_num_surf, (self.rect.x + 5, y))
+            
+            screen.blit(text_surf, (self.rect.x + gutter_width + 5, y))
 
             if self.active and i == self.cursor_line:
-                prefix = f"{i:02}: "
-                prefix_width, _ = self.font.size(prefix)
                 content_before_cursor = line[:self.cursor_col]
                 content_width, _ = self.font.size(content_before_cursor)
-                cursor_x = self.rect.x + 10 + prefix_width + content_width
+                cursor_x = self.rect.x + gutter_width + 5 + content_width
                 
                 if (pygame.time.get_ticks() // 500) % 2 == 0:
                     pygame.draw.line(screen, COLOR_ACCENT, (cursor_x, y), (cursor_x, y + self.line_height), 2)
@@ -273,6 +278,12 @@ class MemoryView:
         self.scroll_y = 0
         self.total_lines = 4096 # Total memory size
 
+    def scroll_to_address(self, addr):
+        # Center the address in the view if possible
+        lines_visible = (self.rect.height - 50) // 18
+        target_scroll = addr - lines_visible // 2
+        self.scroll_y = max(0, min(target_scroll, self.total_lines - lines_visible))
+
     def handle_event(self, event):
         if event.type == pygame.MOUSEWHEEL:
             if self.rect.collidepoint(pygame.mouse.get_pos()):
@@ -303,8 +314,13 @@ class MemoryView:
         end_idx = min(len(memory.data), start_idx + lines_visible + 1)
         
         y = y_start
+        y = y_start
         for addr in range(start_idx, end_idx):
             if y + line_h > self.rect.bottom - 5: break
+            
+            # Zebra Striping
+            if addr % 2 == 0:
+                pygame.draw.rect(screen, (35, 35, 40), (self.rect.x + 2, y, self.rect.width - 4, line_h))
             
             val = memory.data[addr]
             color = COLOR_TEXT
@@ -470,7 +486,12 @@ class GUI:
         self.screen.blit(text_surf, (x_mem + 10, y_mem + 15))
         
         # Draw Memory View
-        last_access = cpu.mar.read() if cpu.signals['read_mem'] or cpu.signals['write_mem'] else None
+        last_access = None
+        if cpu.signals['read_mem'] or cpu.signals['write_mem']:
+            last_access = cpu.mar.read()
+            # Smart Auto-Scroll
+            self.memory_view.scroll_to_address(last_access)
+            
         self.memory_view.draw(self.screen, cpu.memory, last_access_addr=last_access)
         
         y_sig = 400
