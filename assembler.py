@@ -57,6 +57,13 @@ def assemble(lines):
         operand_val = 0
         
         # Handle operands
+        REQUIRES_OPERAND = {
+            'LODD', 'STOD', 'ADDD', 'SUBD', 
+            'JPOS', 'JZER', 'JUMP', 'LOCO', 
+            'LODL', 'STOL', 'ADDL', 'SUBL', 
+            'JNEG', 'JNZE', 'CALL'
+        }
+
         if len(parts) > 1:
             operand_str = parts[1]
             
@@ -72,6 +79,8 @@ def assemble(lines):
                         operand_val = int(operand_str)
                 except ValueError:
                     raise ValueError(f"Invalid operand: {operand_str}")
+        elif mnemonic in REQUIRES_OPERAND:
+             raise ValueError(f"Syntax Error: The instruction '{mnemonic}' requires an operand.")
         
         # Handle Special Opcodes (0xF)
         if opcode == 0xF:

@@ -118,6 +118,92 @@ class CPU:
                 self.last_action_desc = f"LODD: AC <- Mem[{self.mar.read()}] ({val})"
                 self.mpc = 0
 
+            # --- LODL (Load Local) ---
+            case 50:
+                offset = self.ir.read() & 0xFFF
+                # Simulate ALU addition: SP + offset
+                addr = (self.sp.read() + offset) & 0xFFF
+                self.mar.write(addr)
+                self.signals['alu_op'] = 'ADD'
+                self.signals['active_path'] = ['SP', 'IR', 'ALU', 'MAR']
+                self.last_action_desc = f"LODL: MAR <- SP + {offset} ({addr})"
+                self.mpc = 51
+            case 51:
+                val = self.cache.read(self.mar.read())
+                self.mbr.write(val)
+                self.ac.write(val)
+                self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR', 'AC']
+                self.last_action_desc = f"LODL: AC <- Mem[{self.mar.read()}] ({val})"
+                self.mpc = 0
+
+            # --- STOL (Store Local) ---
+            case 55:
+                offset = self.ir.read() & 0xFFF
+                addr = (self.sp.read() + offset) & 0xFFF
+                self.mar.write(addr)
+                self.signals['alu_op'] = 'ADD'
+                self.signals['active_path'] = ['SP', 'IR', 'ALU', 'MAR']
+                self.last_action_desc = f"STOL: MAR <- SP + {offset} ({addr})"
+                self.mpc = 56
+            case 56:
+                self.mbr.write(self.ac.read())
+                self.cache.write(self.mar.read(), self.mbr.read())
+                self.signals['write_mem'] = True
+                self.signals['active_path'] = ['AC', 'MBR', 'Cache']
+                self.last_action_desc = f"STOL: Mem[{self.mar.read()}] <- AC ({self.ac.read()})"
+                self.mpc = 0
+
+            # --- ADDL (Add Local) ---
+            case 60:
+                offset = self.ir.read() & 0xFFF
+                addr = (self.sp.read() + offset) & 0xFFF
+                self.mar.write(addr)
+                self.signals['alu_op'] = 'ADD'
+                self.signals['active_path'] = ['SP', 'IR', 'ALU', 'MAR']
+                self.last_action_desc = f"ADDL: MAR <- SP + {offset} ({addr})"
+                self.mpc = 61
+            case 61:
+                val = self.cache.read(self.mar.read())
+                self.mbr.write(val)
+                self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR']
+                self.last_action_desc = f"ADDL: MBR <- Mem[{self.mar.read()}] ({val})"
+                self.mpc = 62
+            case 62:
+                old_ac = self.ac.read()
+                res = self.alu.add(old_ac, self.mbr.read())
+                self.ac.write(res)
+                self.signals['alu_op'] = 'ADD'
+                self.signals['active_path'] = ['AC', 'MBR', 'ALU', 'AC']
+                self.last_action_desc = f"ADDL: AC <- {old_ac} + {self.mbr.read()} = {res}"
+                self.mpc = 0
+
+            # --- SUBL (Sub Local) ---
+            case 65:
+                offset = self.ir.read() & 0xFFF
+                addr = (self.sp.read() + offset) & 0xFFF
+                self.mar.write(addr)
+                self.signals['alu_op'] = 'ADD'
+                self.signals['active_path'] = ['SP', 'IR', 'ALU', 'MAR']
+                self.last_action_desc = f"SUBL: MAR <- SP + {offset} ({addr})"
+                self.mpc = 66
+            case 66:
+                val = self.cache.read(self.mar.read())
+                self.mbr.write(val)
+                self.signals['read_mem'] = True
+                self.signals['active_path'] = ['Cache', 'MBR']
+                self.last_action_desc = f"SUBL: MBR <- Mem[{self.mar.read()}] ({val})"
+                self.mpc = 67
+            case 67:
+                old_ac = self.ac.read()
+                res = self.alu.sub(old_ac, self.mbr.read())
+                self.ac.write(res)
+                self.signals['alu_op'] = 'SUB'
+                self.signals['active_path'] = ['AC', 'MBR', 'ALU', 'AC']
+                self.last_action_desc = f"SUBL: AC <- {old_ac} - {self.mbr.read()} = {res}"
+                self.mpc = 0
+
             # --- STOD (Store Direct) ---
             case 15:
                 addr = self.ir.read() & 0xFFF
@@ -198,6 +284,29 @@ class CPU:
                     jumped = True
                     self.signals['active_path'] = ['AC', 'IR', 'PC']
                 self.last_action_desc = f"JZER: {'Pulou' if jumped else 'Não pulou'} (AC={self.ac.read()})"
+                self.mpc = 0
+
+            # --- JNEG (Jump if Negative) ---
+            case 70:
+                jumped = False
+                self.signals['active_path'] = ['AC']
+                # Check bit 15 (sign bit)
+                if (self.ac.read() & 0x8000) != 0:
+                     self.pc.write(self.ir.read() & 0xFFF)
+                     jumped = True
+                     self.signals['active_path'] = ['AC', 'IR', 'PC']
+                self.last_action_desc = f"JNEG: {'Pulou' if jumped else 'Não pulou'} (AC={self.ac.read()})"
+                self.mpc = 0
+
+            # --- JNZE (Jump if Non-Zero) ---
+            case 75:
+                jumped = False
+                self.signals['active_path'] = ['AC']
+                if self.ac.read() != 0:
+                    self.pc.write(self.ir.read() & 0xFFF)
+                    jumped = True
+                    self.signals['active_path'] = ['AC', 'IR', 'PC']
+                self.last_action_desc = f"JNZE: {'Pulou' if jumped else 'Não pulou'} (AC={self.ac.read()})"
                 self.mpc = 0
 
             # --- JUMP (Unconditional) ---
